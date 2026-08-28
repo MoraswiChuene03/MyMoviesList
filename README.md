@@ -85,5 +85,13 @@ src/
 4. **Reviews:** Rate movies and write personal reviews
 5. **Profile:** View and manage your movie collection
 
+## Live Demo
+
+To see a live demo of this app without needing to set up your own environment variables, here it is on Vercel:
+
+https://my-movies-list-psi.vercel.app/
+
+
+
 
 
