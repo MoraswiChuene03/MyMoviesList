@@ -7,6 +7,7 @@ function Profile() {
   const [user, setUser] = useState(null)
   const [userMovies, setUserMovies] = useState([])
   const [loading, setLoading] = useState(true)
+  const [sortBy, setSortBy] = useState('title') 
 
   useEffect(() => {
     const fetchUserAndMovies = async () => {
@@ -65,10 +66,18 @@ function Profile() {
     }
   }
 
-  // Divide the user's saved movies into the three tracked categories.
-  const completedMovies = userMovies.filter(movie => movie.status === "Completed")
-  const watchlistMovies = userMovies.filter(movie => movie.status === "Plan to Watch")
-  const droppedMovies = userMovies.filter(movie => movie.status === "Dropped")
+  const sortMovies = (movies) => {
+  return [...movies].sort((a, b) => {
+    if (sortBy === 'title') return a.title.localeCompare(b.title)
+    if (sortBy === 'score_high') return (b.user_score || 0) - (a.user_score || 0)
+    if (sortBy === 'score_low') return (a.user_score || 0) - (b.user_score || 0)
+    return 0
+  })
+}
+
+const completedMovies = sortMovies(userMovies.filter(m => m.status === "Completed"))
+const watchlistMovies = sortMovies(userMovies.filter(m => m.status === "Plan to Watch"))
+const droppedMovies = sortMovies(userMovies.filter(m => m.status === "Dropped"))
 
   const MovieTable = ({ title, list }) => (
     <div style={{ marginBottom: '40px' }}>
@@ -124,10 +133,36 @@ function Profile() {
     return <div style={{ color: 'white', padding: '20px' }}>Loading profile...</div>
   }
 
-  return (
+ return (
     <div style={{ padding: '20px', color: 'white' }}>
-      <h2 style={{ margin: '0 0 20px 0' }}>My Profile</h2>
-      <p>Welcome back! Here's a summary of your movie lists and reviews.</p>
+      
+      {/* Flexbox container for Header & Dropdown */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h2 style={{ margin: 0 }}>My Profile</h2>
+        
+        {/* Sorting Dropdown */}
+        <select 
+          value={sortBy} 
+          onChange={(e) => setSortBy(e.target.value)}
+          style={{ 
+            padding: '8px 12px', 
+            backgroundColor: '#222', 
+            color: 'white', 
+            border: '1px solid #444', 
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          <option value="title">Sort by Title (A-Z)</option>
+          <option value="score_high">Highest Score First</option>
+          <option value="score_low">Lowest Score First</option>
+        </select>
+      </div>
+
+      <p style={{ color: '#aaa', marginTop: '0', marginBottom: '30px' }}>
+        Welcome back! Here's a summary of your movie lists and reviews.
+      </p>
+
       <MovieTable title="Completed Movies" list={completedMovies} />
       <MovieTable title="Watchlist" list={watchlistMovies} />
       <MovieTable title="Dropped Movies" list={droppedMovies} />

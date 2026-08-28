@@ -5,11 +5,24 @@ function Home() {
   const [trendingMovies, setTrendingMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [genres, setGenres] = useState([])
+  const [activeGenre, setActiveGenre] = useState('')
+
   
  
   const [page, setPage] = useState(1) 
 
   const API_KEY = import.meta.env.VITE_TMDB_API_KEY
+
+
+  useEffect(() => {
+  const fetchGenres = async () => {
+    const res = await fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${API_KEY}`)
+    const data = await res.json()
+    setGenres(data.genres)
+  }
+  fetchGenres()
+}, [])
 
   useEffect(() => {
     // If the search bar is empty, fetch the weekly trending movies instead of search results.
@@ -20,6 +33,10 @@ function Home() {
         try {
           const response = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}&page=${page}`)
           const data = await response.json()
+          let url = `https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}&page=${page}`
+          if (activeGenre) {
+            url = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${activeGenre}&page=${page}`
+          }
 
           if (page === 1) {
             setTrendingMovies(data.results)
@@ -76,7 +93,23 @@ function Home() {
           style={{ width: '300px', padding: '10px', borderRadius: '5px', border: '1px solid #333', backgroundColor: '#222', color: 'white' }}
         />
       </div>
-
+      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '20px' }}>
+  <button 
+    onClick={() => { setActiveGenre(''); setPage(1); }}
+    style={{ backgroundColor: activeGenre === '' ? '#00d2ff' : '#333', color: activeGenre === '' ? '#090909' : 'white', borderRadius: '20px', padding: '8px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+  >
+    Trending 
+  </button>
+  {genres.map(genre => (
+    <button 
+      key={genre.id}
+      onClick={() => { setActiveGenre(genre.id); setPage(1); setSearchQuery(''); }}
+      style={{ backgroundColor: activeGenre === genre.id ? '#00d2ff' : '#333', color: activeGenre === genre.id ? '#090909' : 'white', borderRadius: '20px', padding: '8px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+    >
+      {genre.name}
+    </button>
+  ))}
+</div>
       <h2 style={{ color: 'white', fontSize: "28px", marginBottom: "20px" }}>
         {searchQuery ? `Results for "${searchQuery}"` : 'Trending Movies This Week 🔥'}
       </h2>
