@@ -3,16 +3,17 @@ import { supabase } from '../supabaseClient'
 import { useNavigate } from 'react-router-dom'
 
 function Profile() {
-  
   const [user, setUser] = useState(null)
   const [userMovies, setUserMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('title') 
 
+  
+  const navigate = useNavigate()
+
   useEffect(() => {
     const fetchUserAndMovies = async () => {
       try {
-        
         const { data: { user: authUser } } = await supabase.auth.getUser()
         if (authUser) {
           setUser(authUser)
@@ -21,9 +22,6 @@ function Profile() {
           return
         }
 
-        // Fetch user movies for the signed-in account.
-        // This example assumes row-level security (RLS) or server-side filtering
-        // ensures that only the current user's movies are returned.
         const { data, error } = await supabase
           .from('user_movies')
           .select('*')
@@ -38,19 +36,17 @@ function Profile() {
     }
     
     fetchUserAndMovies()
-  }, [])
+  }, [navigate]) 
 
   const handleDelete = async (movieId) => {
     if (!window.confirm('Are you sure you want to remove this movie from your profile?')) return
 
-   
     if (!user) {
       alert("User session not found. Please log in again.")
       return
     }
 
     try {
-      // Delete only the current user's movie record from Supabase.
       const { error } = await supabase
         .from('user_movies')
         .delete()
@@ -59,7 +55,6 @@ function Profile() {
 
       if (error) throw error
 
-      // Update the local state to reflect the deletion instantly.
       setUserMovies(prevMovies => prevMovies.filter(movie => movie.id !== movieId))
     } catch (error) {
       console.error("Error deleting movie:", error)
@@ -67,17 +62,17 @@ function Profile() {
   }
 
   const sortMovies = (movies) => {
-  return [...movies].sort((a, b) => {
-    if (sortBy === 'title') return a.title.localeCompare(b.title)
-    if (sortBy === 'score_high') return (b.user_score || 0) - (a.user_score || 0)
-    if (sortBy === 'score_low') return (a.user_score || 0) - (b.user_score || 0)
-    return 0
-  })
-}
+    return [...movies].sort((a, b) => {
+      if (sortBy === 'title') return a.title.localeCompare(b.title)
+      if (sortBy === 'score_high') return (b.user_score || 0) - (a.user_score || 0)
+      if (sortBy === 'score_low') return (a.user_score || 0) - (b.user_score || 0)
+      return 0
+    })
+  }
 
-const completedMovies = sortMovies(userMovies.filter(m => m.status === "Completed"))
-const watchlistMovies = sortMovies(userMovies.filter(m => m.status === "Plan to Watch"))
-const droppedMovies = sortMovies(userMovies.filter(m => m.status === "Dropped"))
+  const completedMovies = sortMovies(userMovies.filter(m => m.status === "Completed"))
+  const watchlistMovies = sortMovies(userMovies.filter(m => m.status === "Plan to Watch"))
+  const droppedMovies = sortMovies(userMovies.filter(m => m.status === "Dropped"))
 
   const MovieTable = ({ title, list }) => (
     <div style={{ marginBottom: '40px' }}>
@@ -91,7 +86,6 @@ const droppedMovies = sortMovies(userMovies.filter(m => m.status === "Dropped"))
               <th style={{ padding: '10px', borderBottom: '1px solid #333' }}>Movie Title</th>
               <th style={{ padding: '10px', borderBottom: '1px solid #333' }}>Your Score</th>
               <th style={{ padding: '10px', borderBottom: '1px solid #333' }}>Your Review</th>
-              {/* 3. FIXED: Added an empty column header so the table alignment balances out */}
               <th style={{ padding: '10px', borderBottom: '1px solid #333' }}></th>
             </tr>
           </thead>
@@ -105,8 +99,6 @@ const droppedMovies = sortMovies(userMovies.filter(m => m.status === "Dropped"))
                 <td style={{ padding: '10px', fontStyle: 'italic', color: '#aaa' }}>
                   {movie.review ? `"${movie.review}"` : 'No review yet.'}
                 </td>
-
-                {/* The delete button row cell */}
                 <td style={{ padding: '10px', textAlign: 'right' }}>
                   <button
                     onClick={() => handleDelete(movie.id)}
@@ -133,14 +125,10 @@ const droppedMovies = sortMovies(userMovies.filter(m => m.status === "Dropped"))
     return <div style={{ color: 'white', padding: '20px' }}>Loading profile...</div>
   }
 
- return (
+  return (
     <div style={{ padding: '20px', color: 'white' }}>
-      
-      {/* Flexbox container for Header & Dropdown */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h2 style={{ margin: 0 }}>My Profile</h2>
-        
-        {/* Sorting Dropdown */}
         <select 
           value={sortBy} 
           onChange={(e) => setSortBy(e.target.value)}
