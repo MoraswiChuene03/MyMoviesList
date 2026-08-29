@@ -6,10 +6,9 @@ function Profile() {
   const [user, setUser] = useState(null)
   const [userMovies, setUserMovies] = useState([])
   const [loading, setLoading] = useState(true)
-  const [sortBy, setSortBy] = useState('title') 
-
+  const [sortBy, setSortBy] = useState('title')
   
-  const navigate = useNavigate()
+  const navigate = useNavigate() 
 
   useEffect(() => {
     const fetchUserAndMovies = async () => {
@@ -36,7 +35,7 @@ function Profile() {
     }
     
     fetchUserAndMovies()
-  }, [navigate]) 
+  }, [navigate])
 
   const handleDelete = async (movieId) => {
     if (!window.confirm('Are you sure you want to remove this movie from your profile?')) return
@@ -61,6 +60,7 @@ function Profile() {
     }
   }
 
+  // Sorting function
   const sortMovies = (movies) => {
     return [...movies].sort((a, b) => {
       if (sortBy === 'title') return a.title.localeCompare(b.title)
@@ -111,7 +111,9 @@ function Profile() {
                       cursor: 'pointer',
                       fontWeight: 'bold'
                     }}
-                  >Delete</button>
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
@@ -129,6 +131,7 @@ function Profile() {
     <div style={{ padding: '20px', color: 'white' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h2 style={{ margin: 0 }}>My Profile</h2>
+        
         <select 
           value={sortBy} 
           onChange={(e) => setSortBy(e.target.value)}

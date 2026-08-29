@@ -2,79 +2,96 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 function Home() {
-  const [trendingMovies, setTrendingMovies] = useState([])
+  const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [genres, setGenres] = useState([])
   const [activeGenre, setActiveGenre] = useState('')
-  const [page, setPage] = useState(1) 
+  const [page, setPage] = useState(1)
 
   const API_KEY = import.meta.env.VITE_TMDB_API_KEY
 
+ 
   useEffect(() => {
     const fetchGenres = async () => {
-      const res = await fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${API_KEY}`)
-      const data = await res.json()
-      setGenres(data.genres)
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${API_KEY}`)
+        const data = await res.json()
+        setGenres(data.genres || [])
+      } catch (error) {
+        console.error("Error fetching genres:", error)
+      }
     }
     fetchGenres()
   }, [])
 
+  // 2. Fetch movies from TMDB API
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      const fetchTrendingMovies = async () => {
-        if (page === 1) setLoading(true) 
-        try {
-          let url = `https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}&page=${page}`
-          
-          if (activeGenre) {
-            url = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${activeGenre}&page=${page}`
+    
+    if (searchQuery.trim() !== '') {
+      const delayDebounceFn = setTimeout(() => {
+        const fetchSearchResults = async () => {
+          if (page === 1) setLoading(true)
+          try {
+            const response = await fetch(
+              `https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(searchQuery)}&page=${page}`
+            )
+            const data = await response.json()
+            if (page === 1) {
+              setMovies(data.results || [])
+            } else {
+              setMovies(prev => [...prev, ...(data.results || [])])
+            }
+          } catch (error) {
+            console.error("Error fetching search results:", error)
+          } finally {
+            setLoading(false)
           }
-
-          const response = await fetch(url)
-          const data = await response.json()
-
-          if (page === 1) {
-            setTrendingMovies(data.results)
-          } else {
-            setTrendingMovies(prevMovies => [...prevMovies, ...data.results])
-          }
-          
-        } catch (error) {
-          console.error("Error fetching trending movies:", error)
-        } finally {
-          setLoading(false)
         }
-      }
+        fetchSearchResults()
+      }, 500)
 
-      fetchTrendingMovies()
-      return
+      return () => clearTimeout(delayDebounceFn)
     }
 
-    const delayDebounceFn = setTimeout(() => {
-      const fetchSearchResults = async () => {
-        setLoading(true)
-        try {
-          const response = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(searchQuery)}`)
-          const data = await response.json()
-          setTrendingMovies(data.results)
-        } catch (error) {
-          console.error("Error fetching search results:", error)
-        } finally {
-          setLoading(false)
-        }
-      }
-      fetchSearchResults()
-    }, 500)
-
-    return () => clearTimeout(delayDebounceFn)
     
-  // FIX: Added activeGenre to the dependency array so clicking genres triggers a refetch
-  }, [searchQuery, page, activeGenre]) 
+    const fetchBrowseMovies = async () => {
+      if (page === 1) setLoading(true)
+
+      let url = `https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}&page=${page}`
+      if (activeGenre) {
+        url = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${activeGenre}&page=${page}`
+      }
+
+      try {
+        const response = await fetch(url)
+        const data = await response.json()
+
+        if (page === 1) {
+          setMovies(data.results || [])
+        } else {
+          setMovies(prev => [...prev, ...(data.results || [])])
+        }
+      } catch (error) {
+        console.error("Error fetching movies:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBrowseMovies()
+  }, [searchQuery, page, activeGenre])
+
+ 
+  const displayedMovies = (searchQuery.trim() !== '' && activeGenre)
+    ? movies.filter(movie => movie.genre_ids && movie.genre_ids.includes(Number(activeGenre)))
+    : movies
+
+  const activeGenreName = genres.find(g => g.id === activeGenre)?.name
 
   return (
     <div style={{ padding: '20px' }}>
-
+      {/* Search Bar */}
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
         <input
           type="text"
@@ -84,41 +101,75 @@ function Home() {
             setSearchQuery(e.target.value)
             setPage(1)
           }}
-          style={{ width: '300px', padding: '10px', borderRadius: '5px', border: '1px solid #333', backgroundColor: '#222', color: 'white' }}
+          style={{ 
+            width: '300px', 
+            padding: '10px', 
+            borderRadius: '5px', 
+            border: '1px solid #333', 
+            backgroundColor: '#222', 
+            color: 'white' 
+          }}
         />
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '20px' }}>
-        <button 
+      {/* Genre Filter Buttons (Always visible) */}
+      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '20px' }}>
+        <button
           onClick={() => { setActiveGenre(''); setPage(1); }}
-          style={{ backgroundColor: activeGenre === '' ? '#00d2ff' : '#333', color: activeGenre === '' ? '#090909' : 'white', borderRadius: '20px', padding: '8px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          style={{
+            backgroundColor: activeGenre === '' ? '#00d2ff' : '#222',
+            color: activeGenre === '' ? '#090909' : 'white',
+            borderRadius: '20px',
+            padding: '8px 16px',
+            border: '1px solid #444',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap'
+          }}
         >
-          Trending 
+          {searchQuery ? 'All Results' : '🔥 Trending'}
         </button>
-        {genres.map(genre => (
-          <button 
+
+        {genres.map((genre) => (
+          <button
             key={genre.id}
-            onClick={() => { setActiveGenre(genre.id); setPage(1); setSearchQuery(''); }}
-            style={{ backgroundColor: activeGenre === genre.id ? '#00d2ff' : '#333', color: activeGenre === genre.id ? '#090909' : 'white', borderRadius: '20px', padding: '8px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            onClick={() => { setActiveGenre(genre.id); setPage(1); }}
+            style={{
+              backgroundColor: activeGenre === genre.id ? '#00d2ff' : '#222',
+              color: activeGenre === genre.id ? '#090909' : 'white',
+              borderRadius: '20px',
+              padding: '8px 16px',
+              border: '1px solid #444',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap'
+            }}
           >
             {genre.name}
           </button>
         ))}
       </div>
 
+      {/* Dynamic Header */}
       <h2 style={{ color: 'white', fontSize: "28px", marginBottom: "20px" }}>
-        {searchQuery ? `Results for "${searchQuery}"` : 'Trending Movies This Week 🔥'}
+        {searchQuery 
+          ? (activeGenreName ? `Results for "${searchQuery}" in ${activeGenreName}` : `Results for "${searchQuery}"`)
+          : activeGenreName 
+            ? `${activeGenreName} Movies` 
+            : 'Trending Movies This Week 🔥'}
       </h2>
 
       {loading ? (
         <div style={{ color: 'white' }}>Loading movies...</div>
+      ) : displayedMovies.length === 0 ? (
+        <div style={{ color: '#aaa', padding: '20px 0' }}>No movies found matching this filter.</div>
       ) : (
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
           gap: '20px' 
         }}>
-          {trendingMovies.map((movie) => (
+          {displayedMovies.map((movie) => (
             <Link 
               to={`/movie/${movie.id}`} 
               key={movie.id} 
@@ -145,12 +196,15 @@ function Home() {
           ))}
         </div>
       )}
-      {!searchQuery && !loading && (
+
+      {!loading && displayedMovies.length > 0 && (
         <div style={{ marginTop: '30px', textAlign: 'center', color: '#aaa' }}>
           <button
             onClick={() => setPage(prev => prev + 1)}
             style={{ backgroundColor: '#00d2ff', color: '#090909', padding: '10px 20px', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-          >Load More</button>
+          >
+            Load More
+          </button>
         </div>
       )}
     </div>
